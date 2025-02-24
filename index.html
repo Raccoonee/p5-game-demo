@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messy Desk - Hidden Object Game</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+        h1 {
+            color: #333;
+            margin: 10px 0;
+        }
+        .game-container {
+            display: flex;
+            flex-direction: row;
+            gap: 20px;
+            margin: 10px;
+        }
+        .items-list {
+            background-color: #fff;
+            border: 2px solid #333;
+            border-radius: 5px;
+            padding: 20px;
+            min-width: 200px;
+        }
+        .items-list h2 {
+            margin-top: 0;
+            text-align: center;
+            color: #333;
+        }
+        .item {
+            margin: 10px 0;
+            font-size: 18px;
+        }
+        .found {
+            text-decoration: line-through;
+            color: #888;
+        }
+        #resetBtn {
+            margin-top: 20px;
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        #resetBtn:hover {
+            background-color: #45a049;
+        }
+        #gameCanvas {
+            border: 2px solid #333;
+            border-radius: 5px;
+        }
+        .win-message {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 10;
+        }
+        .win-message h2 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Messy Desk - Hidden Object Game</h1>
+    <div class="game-container">
+        <div id="gameCanvas"></div>
+        <div class="items-list">
+            <h2>Find These Items:</h2>
+            <div id="notebook" class="item">Red Notebook</div>
+            <div id="plant" class="item">Plant</div>
+            <div id="scissors" class="item">Scissors</div>
+            <div id="bottle" class="item">Bottle</div>
+            <div id="lamp" class="item">Lamp</div>
+            <div id="ruler" class="item">Yellow Ruler</div>
+            <div id="clipboard" class="item">Clipboard</div>
+            <div id="postit" class="item">Post-it Note</div>
+            <div id="mouse" class="item">Computer Mouse</div>
+            <div id="trashcan" class="item">Trash Can</div>
+            <button id="resetBtn">Reset Game</button>
+        </div>
+    </div>
+    <div id="winMessage" class="win-message">
+        <h2>Congratulations!</h2>
+        <p>You found all the items!</p>
+        <button id="winResetBtn">Play Again</button>
+    </div>
+
+    <script>
+        let img;
+        let itemsFound = {
+            notebook: false,
+            plant: false,
+            scissors: false,
+            bottle: false,
+            lamp: false,
+            ruler: false,
+            clipboard: false,
+            postit: false,
+            mouse: false,
+            trashcan: false
+        };
+        
+        // Define hotspot regions for each item
+        const hotspots = {
+            notebook: { x: 760, y: 125, radius: 40 },
+            plant: { x: 140, y: 145, radius: 35 },
+            scissors: { x: 500, y: 670, radius: 40 },
+            bottle: { x: 310, y: 345, radius: 35 },
+            lamp: { x: 655, y: 50, radius: 40 },
+            ruler: { x: 490, y: 560, radius: 35 },
+            clipboard: { x: 290, y: 520, radius: 50 },
+            postit: { x: 570, y: 270, radius: 20 },
+            mouse: { x: 655, y: 315, radius: 20 },
+            trashcan: { x: 75, y: 190, radius: 35 }
+        };
+        
+        // Highlight effects
+        let highlights = [];
+        let debugMode = false;
+        
+        function preload() {
+            img = loadImage('./picture.png');
+        }
+        
+        function setup() {
+            const canvas = createCanvas(1000, 700);
+            canvas.parent('gameCanvas');
+            
+            // Button events
+            document.getElementById('resetBtn').addEventListener('click', resetGame);
+            document.getElementById('winResetBtn').addEventListener('click', resetGame);
+            
+            // Debug mode can be toggled by pressing 'D' key
+            document.addEventListener('keydown', function(event) {
+                if (event.key.toLowerCase() === 'd') {
+                    toggleDebug();
+                }
+            });
+        }
+        
+        function draw() {
+            // Draw the image
+            image(img, 0, 0, width, height);
+            
+            // Draw debug hotspots if debug mode is on
+            if (debugMode) {
+                for (const itemName in hotspots) {
+                    const spot = hotspots[itemName];
+                    
+                    // Draw hotspot circle
+                    fill(255, 0, 0, 100);
+                    stroke(255, 0, 0);
+                    strokeWeight(2);
+                    ellipse(spot.x, spot.y, spot.radius * 2);
+                    
+                    // Draw item name
+                    fill(0);
+                    noStroke();
+                    textSize(14);
+                    textAlign(CENTER);
+                    text(itemName, spot.x, spot.y - spot.radius - 5);
+                }
+            }
+            
+            // Draw hotspot highlights (for found items)
+            for (const itemName in itemsFound) {
+                if (itemsFound[itemName]) {
+                    const spot = hotspots[itemName];
+                    
+                    // Draw highlight effect
+                    noFill();
+                    stroke(255, 215, 0);
+                    strokeWeight(3);
+                    ellipse(spot.x, spot.y, spot.radius * 2);
+                    
+                    // Draw checkmark
+                    fill(0, 255, 0);
+                    noStroke();
+                    textSize(24);
+                    text("✓", spot.x - 8, spot.y + 8);
+                }
+            }
+            
+            // Draw temporary highlights
+            for (let i = highlights.length - 1; i >= 0; i--) {
+                const highlight = highlights[i];
+                
+                // Shrinking circle effect
+                noFill();
+                stroke(255, 255, 0, highlight.alpha);
+                strokeWeight(3);
+                ellipse(highlight.x, highlight.y, highlight.size);
+                
+                // Update highlight properties
+                highlight.size += 2;
+                highlight.alpha -= 5;
+                
+                // Remove faded highlights
+                if (highlight.alpha <= 0) {
+                    highlights.splice(i, 1);
+                }
+            }
+            
+            // Check if game is won
+            if (checkAllItemsFound()) {
+                document.getElementById('winMessage').style.display = 'block';
+            }
+        }
+        
+        function mousePressed() {
+            // Check if click is within any hotspot
+            for (const itemName in hotspots) {
+                const spot = hotspots[itemName];
+                const d = dist(mouseX, mouseY, spot.x, spot.y);
+                
+                if (d < spot.radius) {
+                    // Mark item as found
+                    itemsFound[itemName] = true;
+                    
+                    // Add highlight effect
+                    highlights.push({
+                        x: spot.x,
+                        y: spot.y,
+                        size: spot.radius * 1.2,
+                        alpha: 255
+                    });
+                    
+                    // Update UI
+                    document.getElementById(itemName).classList.add('found');
+                    
+                    // Check if all items are found
+                    if (checkAllItemsFound()) {
+                        document.getElementById('winMessage').style.display = 'block';
+                    }
+                }
+            }
+        }
+        
+        function checkAllItemsFound() {
+            for (const itemName in itemsFound) {
+                if (!itemsFound[itemName]) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        
+        function resetGame() {
+            // Reset all items to not found
+            for (const itemName in itemsFound) {
+                itemsFound[itemName] = false;
+                document.getElementById(itemName).classList.remove('found');
+            }
+            
+            // Clear highlights
+            highlights = [];
+            
+            // Hide win message
+            document.getElementById('winMessage').style.display = 'none';
+        }
+        
+        function toggleDebug() {
+            debugMode = !debugMode;
+        }
+    </script>
+</body>
+</html>
